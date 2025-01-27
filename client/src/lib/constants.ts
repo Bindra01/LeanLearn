@@ -1,1 +1,1 @@
-export const BASE_URL = "https://lean-learn-backend-ai-do7a.onrender.com";
+export const BASE_URL = "http://localhost:8000";
