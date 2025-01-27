@@ -1,6 +1,5 @@
 import { MCQQuestion, FillQuestion, TFQuestion, FormulaQuestion } from '../../types/quiz';
-
-const BASE_URL = 'https://lean-learn-backend-ai-do7a.onrender.com';
+import { BASE_URL } from '../constants';
 
 export const aiApi = {
   explainAnswer: async (data: {

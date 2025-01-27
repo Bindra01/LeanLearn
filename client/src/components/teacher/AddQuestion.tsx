@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import leanLearnLogo from "../../assets/images/Logo.png";
 import { formulaQuestionApi } from "../../lib/api/questions";
+import { BASE_URL } from "@/lib/constants";
 
 interface Choice {
   id: number;
@@ -634,7 +635,7 @@ const AddQuestion: React.FC = () => {
         };
 
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/mcqquestion",
+          `${BASE_URL}/mcqquestion`,
           {
             method: "POST",
             headers: {
@@ -682,7 +683,7 @@ const AddQuestion: React.FC = () => {
           used: true,
         };
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/fillquestion",
+          `${BASE_URL}/fillquestion`,
           {
             method: "POST",
             headers: {
@@ -708,7 +709,7 @@ const AddQuestion: React.FC = () => {
         };
 
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/tfquestion",
+          `${BASE_URL}/tfquestion`,
           {
             method: "POST",
             headers: {
