@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import leanLearnLogo from "../../assets/images/Logo.png";
 import { formulaQuestionApi } from "../../lib/api/questions";
+import SideBar from "../ui/SideBar";
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
+import { convertToLatex } from "./LatexConverter";
 
 interface Choice {
   id: number;
@@ -17,6 +20,7 @@ interface MCQQuestionData {
   question: string;
   options: string[];
   answers: string[];
+  captions:string[];
   resource: string[];
   used: boolean;
 }
@@ -46,7 +50,6 @@ interface TrueFalseQuestionData {
 
 const AddQuestion: React.FC = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [questionType, setQuestionType] = useState<
     "MCQs" | "Fill in the blank" | "True/False" | "Create Formula"
   >("MCQs");
@@ -67,6 +70,7 @@ const AddQuestion: React.FC = () => {
   });
   const [choices, setChoices] = useState<Choice[]>(() => {
     const savedChoices = localStorage.getItem("choices");
+    console.log(savedChoices)
     return savedChoices
       ? JSON.parse(savedChoices)
       : [
@@ -75,7 +79,7 @@ const AddQuestion: React.FC = () => {
         ];
   });
 
-  const handleSelectionChange = (e) => {
+  const handleSelectionChange = (e:any) => {
     setChoiceType(e.target.value);
     localStorage.removeItem("choices");
   };
@@ -91,6 +95,16 @@ const AddQuestion: React.FC = () => {
       isUnknown?: boolean;
     }[]
   >([]);
+  const [operators,setOperators] = useState<
+  {
+    name: string;
+    symbol: string;
+  }[]
+>([])
+const [formula, setFormula]=useState<{
+  name: string;
+  symbol: string;
+}[]>([])
   const [selectedOperator, setSelectedOperator] = useState("+");
 
   const commonQuantities = {
@@ -106,7 +120,8 @@ const AddQuestion: React.FC = () => {
     Gravity: "g",
   };
 
-  const operators = ["+", "-", "*", "/", "=", "(", ")"];
+  const commonOperators = {Addition:"+",Subtraction: "-",Multiplication: "X",Division: "/",Equals: "=",
+    "Left Paranthesis":"(","Right Paranthesis": ")"};
 
   const classes = [
     { value: "8", label: "Class 8" },
@@ -221,23 +236,65 @@ const AddQuestion: React.FC = () => {
   const addQuantity = () => {
     setQuantities([...quantities, { name: "", symbol: "", isUnknown: false }]);
   };
-
   const removeQuantity = (index: number) => {
     const newQuantities = quantities.filter((_, i) => i !== index);
     setQuantities(newQuantities);
   };
-
+  const addOperator = () => {
+    setOperators([...operators, { name: "", symbol: "" }]);
+  };
+  const removeOperator = (index: number) => {
+    const newOperators = operators.filter((_, i) => i !== index);
+    setOperators(newOperators);
+  };
   const handleQuantitySelect = (index: number, quantityName: string) => {
-    const symbol =
-      commonQuantities[quantityName as keyof typeof commonQuantities];
+    const symbol = commonQuantities[quantityName as keyof typeof commonQuantities];
+  
+    // Update quantities
     const newQuantities = [...quantities];
     newQuantities[index] = {
       ...newQuantities[index],
       name: quantityName,
       symbol: symbol,
     };
+  
+    // Update formula at the correct position (even index)
+    const newFormula = [...formula];
+    const formulaIndex = index * 2; // Ensuring quantities go to even indices
+    newFormula[formulaIndex] = {
+      name: quantityName,
+      symbol: symbol,
+    };
+  
     setQuantities(newQuantities);
+    setFormula(newFormula);
   };
+  
+  const handleOperatorSelect = (index: number, operatorName: string) => {
+    const symbol = commonOperators[operatorName as keyof typeof commonOperators];
+  
+    // Update operators
+    const newOperators = [...operators];
+    newOperators[index] = {
+      ...newOperators[index],
+      name: operatorName,
+      symbol: symbol,
+    };
+  
+    // Update formula at the correct position (odd index)
+    const newFormula = [...formula];
+    const formulaIndex = index * 2 + 1; // Ensuring operators go to odd indices
+    newFormula[formulaIndex] = {
+      name: operatorName,
+      symbol: symbol,
+    };
+  
+    setOperators(newOperators);
+    setFormula(newFormula);
+  };
+  
+  
+  console.log(formula)
   const handleChoiceImageUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
     choiceId: number
@@ -289,6 +346,7 @@ const AddQuestion: React.FC = () => {
       ...questionData,
       options: choices.map((c) => c.text),
     });
+    console.log(choices,questionData)
   };
 
   const renderQuestionContent = () => {
@@ -373,18 +431,37 @@ const AddQuestion: React.FC = () => {
                 </button>
               </div>
             ))}
+            {operators.map((op, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <select
+                  value={op.name}
+                  onChange={(e) => handleOperatorSelect(index, e.target.value)}
+                  className="bg-[#111111] text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-[#21B6F8]"
+                >
+                  <option value="">Select Operator</option>
+                  {Object.keys(commonOperators).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
 
-            <button
-              onClick={addQuantity}
-              className="px-4 py-2 bg-[#21B6F8] text-white rounded hover:bg-opacity-90"
-            >
-              Add Quantity
-            </button>
-
-            <div className="flex gap-2 mt-4">
-              {operators.map((op) => (
+                <div className="flex items-center gap-2 text-white">
+                  <span>Symbol: {op.symbol}</span>
+                </div>
                 <button
-                  key={op}
+                  onClick={() => removeOperator(index)}
+                  className="text-red-500 hover:text-red-400"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            
+  <div className="flex gap-2 mt-4">
+  {/* {Object.keys(commonOperators).map((name) => (
+                <button
+                  key={name}
                   onClick={() => setSelectedOperator(op)}
                   className={`px-3 py-1 rounded ${
                     selectedOperator === op
@@ -394,15 +471,28 @@ const AddQuestion: React.FC = () => {
                 >
                   {op}
                 </button>
-              ))}
+              ))} */}
             </div>
+            <button
+              onClick={addQuantity}
+              className="px-4 py-2 mr-2 bg-[#21B6F8] text-white rounded hover:bg-opacity-90"
+            >
+              Add Quantity
+            </button>
+            <button
+              onClick={()=>{addOperator()}}
+              className="px-4 py-2 bg-[#21B6F8] text-white rounded hover:bg-opacity-90"
+            >
+              Add operator
+            </button>
+          
 
             <div className="mt-4 p-3 bg-[#111111] rounded">
               <p className="text-gray-300">Formula Preview:</p>
               <div className="mt-2 font-mono text-white">
-                {quantities
-                  .map((q) => q.symbol)
-                  .join(" " + selectedOperator + " ")}
+                {formula.map((q)=>{
+                  return(" "+q.symbol+" ")
+                })}
               </div>
             </div>
           </div>
@@ -445,7 +535,7 @@ const AddQuestion: React.FC = () => {
                   placeholder="Your Choice here"
                   className="flex-1 bg-[#1A1A1A] text-white px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-[#21B6F8]"
                 />
-              ) : (
+              ) :(
                 <input
                   type="file"
                   accept="image/*"
@@ -493,6 +583,7 @@ const AddQuestion: React.FC = () => {
               )}
             </div>
           ))}
+          {/* {choiceType} */}
           {choices.length < 4 && (
             <button
               onClick={addChoice}
@@ -594,7 +685,7 @@ const AddQuestion: React.FC = () => {
       }
 
       if (questionType === "MCQs") {
-        if (choiceType === "text") {
+        if (choiceType === "text" ) {
           if (choices.some((c) => !c.text.trim())) {
             alert("Please fill in all options");
             setIsLoading(false);
@@ -629,12 +720,13 @@ const AddQuestion: React.FC = () => {
               ? choice?.text || ""
               : choice?.imageUrl || "";
           }),
+          captions:[""],
           resource: choices.map((c) => c.imageUrl || ""),
           used: true,
         };
-
+        console.log("mcqData:",mcqData);
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/mcqquestion",
+          "http://127.0.0.1:8000/mcqquestion",
           {
             method: "POST",
             headers: {
@@ -643,7 +735,7 @@ const AddQuestion: React.FC = () => {
             body: JSON.stringify(mcqData),
           }
         );
-
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -682,7 +774,7 @@ const AddQuestion: React.FC = () => {
           used: true,
         };
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/fillquestion",
+          "http://127.0.0.1:8000/fillquestion",
           {
             method: "POST",
             headers: {
@@ -708,7 +800,7 @@ const AddQuestion: React.FC = () => {
         };
 
         const response = await fetch(
-          "https://lean-learn-backend-ai-do7a.onrender.com/tfquestion",
+          "http://127.0.0.1:8000/tfquestion",
           {
             method: "POST",
             headers: {
@@ -749,9 +841,7 @@ const AddQuestion: React.FC = () => {
               symbol: q.symbol,
               isUnknown: Boolean(q.isUnknown),
             })),
-            formula: quantities
-              .map((q) => q.symbol)
-              .join(" " + selectedOperator + " "),
+            formula: formula,
             // Add the required fields that were missing
             options: [""], // Empty array as it's not used for formula questions
             answers: [""], // Empty array as it's not used for formula questions
@@ -776,7 +866,6 @@ const AddQuestion: React.FC = () => {
             used: true,
           });
           setQuantities([]);
-          setSelectedOperator("+");
           navigate("/teacher/question-bank");
         } catch (error) {
           console.error("Error saving formula question:", error);
@@ -790,7 +879,8 @@ const AddQuestion: React.FC = () => {
       setIsLoading(false);
       localStorage.removeItem("choices");
       navigate("/teacher/question-bank");
-    } catch (error) {
+    } 
+    catch (error) {
       setIsLoading(false);
       console.error("Error saving question:", error);
       if (error instanceof Error) {
@@ -803,110 +893,8 @@ const AddQuestion: React.FC = () => {
 
   return (
     <>
-      <div className="md:hidden flex items-center absolute p-4 pl-8 z-20">
-        {!isSidebarOpen && ( // Only show the icon when the sidebar is closed
-          <button
-            onClick={() => setIsSidebarOpen(true)} // Open sidebar on click
-            className="text-white hover:text-gray-300 focus:outline-none"
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
       <div className="flex min-h-screen bg-black">
-        <div
-          className={`${
-            isSidebarOpen ? "w-64" : "w-20"
-          } bg-[#111111] transition-all duration-300 sidebar-main ease-in-out ${
-            isSidebarOpen ? "block" : "hidden md:block"
-          } `}
-        >
-          <div
-            className={`p-4 flex side-bar-header ${
-              isSidebarOpen ? "gap-2" : "justify-center"
-            } items-center`}
-          >
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-white hover:text-gray-300 focus:outline-none hidden md:block"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            {isSidebarOpen && (
-              <img
-                src={leanLearnLogo}
-                alt="LeanLearn"
-                className="h-8 pl-4 md:pl-12"
-                onClick={() => navigate("/")}
-              />
-            )}
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="text-white hover:text-gray-300 focus:outline-none block md:hidden"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <nav className="mt-8 flex flex-col gap-2 px-3">
-            {navigationItems.map((item) => (
-              <a
-                key={item.id}
-                href={item.path}
-                className={`flex items-center ${
-                  isSidebarOpen ? "gap-3 px-4" : "justify-center"
-                } py-2 rounded-md ${
-                  item.id === "question-bank"
-                    ? "bg-[#21B6F8] text-black"
-                    : "text-gray-400 hover:text-white hover:bg-[#1A1A1A]"
-                }`}
-              >
-                {item.icon}
-                {isSidebarOpen && <span>{item.label}</span>}
-              </a>
-            ))}
-          </nav>
-        </div>
-
+<SideBar navigationItems={navigationItems}/>
         <div className="flex-1 flex  main-content-wrap page-content-quiz">
           <div className="flex-1 p-2 md:p-6 pb-4">
             <div className="bg-[#111111] rounded-lg p-6">

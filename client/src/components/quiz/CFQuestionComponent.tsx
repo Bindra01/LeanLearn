@@ -1,15 +1,15 @@
 import React from 'react';
-import { MCQQuestion } from '../../types/quizInterface';
+import { FormulaQuestion } from '../../types/quizInterface';
 
-interface MCQQuestionProps {
-  question: MCQQuestion;
+interface CFQuestionProps {
+  question: FormulaQuestion;
   onAnswer: (answer: string) => void;
   showFeedback: boolean;
   selectedAnswer: string | null;
   isCorrect: boolean | null;
 }
 
-const MCQQuestionComponent: React.FC<MCQQuestionProps> = ({
+const CFQuestionComponent: React.FC<CFQuestionProps> = ({
   question,
   onAnswer,
   showFeedback,
@@ -44,4 +44,4 @@ const MCQQuestionComponent: React.FC<MCQQuestionProps> = ({
   );
 };
 
-export default MCQQuestionComponent;
+export default CFQuestionComponent;

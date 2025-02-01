@@ -31,8 +31,12 @@ export interface FormulaQuestion extends BaseQuestion {
     value?: number;
     isUnknown?: boolean;
   }>;
-  formula: string;
+  formula: Array<{
+    name: string;
+    symbol: string;
+  }>;
   options: string[];
   answers: string[];
   resource: string[];
 }
+

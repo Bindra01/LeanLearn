@@ -14,7 +14,7 @@ import {
   FillQuestion,
   TFQuestion,
   FormulaQuestion,
-} from "../../types/quiz";
+} from "../../types/quizInterface";
 import {
   mcqQuestionApi,
   fillQuestionApi,
@@ -24,7 +24,7 @@ import {
 } from "../../lib/api/questions";
 
 const companionImages = { 1: einstein, 2: newton, 3: galileo, 4: raman };
-const operators = ["+", "-", "*", "/", "=", "^"];
+const operators = ["+", "-", "X", "/", "=", "^"];
 
 type QuestionType = MCQQuestion | FillQuestion | TFQuestion | FormulaQuestion;
 
@@ -36,6 +36,7 @@ const SelectedTopicPage: React.FC = () => {
     }>
   >([]);
 
+const [disable,setDisable]=useState(false);
   const { topicId } = useParams<{ topicId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -89,6 +90,7 @@ const SelectedTopicPage: React.FC = () => {
     );
   };
 
+  const [disabledSymbols, setDisabledSymbols] = useState(new Set());
   useEffect(() => {
     if (!selectedClass) {
       navigate("/");
@@ -108,9 +110,8 @@ const SelectedTopicPage: React.FC = () => {
         .replace(/\s+/g, "")
         .replace(/,/g, "") 
         .toLowerCase();    
-          console.log(transformedSelectedTopic)
 
-        const combinedQuestions = [
+        const combinedQuestions:(MCQQuestion|FillQuestion|TFQuestion|FormulaQuestion)[] = [
           ...mcqData,
           ...fillData,
           ...tfData,
@@ -156,16 +157,30 @@ const SelectedTopicPage: React.FC = () => {
     setCompanionMessage("");
   }, [currentQuestionIndex]);
 
-  const handleFormulaSelect = (type: "word" | "operator", value: string) => {
-    setFormulaSequence((prev) => [...prev, { type, value }]);
+  const handleFormulaSelect = (type, value) => {
+    setFormulaSequence(prev => [...prev, { type, value }]);
+    setDisabledSymbols(prev => new Set([...prev, value]));
   };
-
+  
+  // When undoing
   const handleFormulaUndo = () => {
-    setFormulaSequence((prev) => prev.slice(0, -1));
+    setFormulaSequence(prev => {
+      if (prev.length === 0) return prev;
+      const lastSymbol = prev[prev.length - 1].value;
+      // Remove only the last symbol from disabled set
+      setDisabledSymbols(prevDisabled => {
+        const newDisabled = new Set(prevDisabled);
+        newDisabled.delete(lastSymbol);
+        return newDisabled;
+      });
+      return prev.slice(0, -1);
+    });
   };
-
+  
+  // When clearing all
   const handleFormulaClear = () => {
     setFormulaSequence([]);
+    setDisabledSymbols(new Set());
   };
 
   const handleOptionSelect = (answer: string) => {
@@ -186,7 +201,10 @@ const SelectedTopicPage: React.FC = () => {
   const formatExplanation = (
     explanation: string,
     isCorrect: boolean,
-    correctAnswer: string
+    correctAnswer: string | {
+      name: string;
+      symbol: string;
+  }[]
   ): string => {
     let cleanText = explanation.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
     cleanText = cleanText.replace(/\d+\.\s*/g, "");
@@ -215,10 +233,11 @@ const SelectedTopicPage: React.FC = () => {
     const currentQuestion = questions[currentQuestionIndex];
     let correct = false;
     let submittedAnswer = "";
-
+    let filteredform="";
     if (isFormulaQuestion(currentQuestion)) {
       submittedAnswer = formulaSequence.map((item) => item.value).join(" ");
-      correct = submittedAnswer === currentQuestion.formula;
+      filteredform=currentQuestion.formula.map((f)=>(currentQuestion.formula.indexOf(f)%2==0)?f.name:f.symbol).join(" ");
+      correct = submittedAnswer === filteredform;
     } else if (
       isMCQQuestion(currentQuestion) ||
       isFillQuestion(currentQuestion)
@@ -260,7 +279,7 @@ const SelectedTopicPage: React.FC = () => {
         topic: currentQuestion.topic,
         subject: currentQuestion.subject,
         answer: isFormulaQuestion(currentQuestion)
-          ? currentQuestion.formula
+          ? filteredform
           : isTFQuestion(currentQuestion)
           ? currentQuestion.answer
           : currentQuestion.answers.join(", "),
@@ -273,7 +292,7 @@ const SelectedTopicPage: React.FC = () => {
           explanation,
           correct,
           isFormulaQuestion(currentQuestion)
-            ? currentQuestion.formula
+            ?filteredform
             : isTFQuestion(currentQuestion)
             ? currentQuestion.answer
             : currentQuestion.answers.join(", ")
@@ -286,7 +305,7 @@ const SelectedTopicPage: React.FC = () => {
           ? "Well done! You got it right."
           : `Not quite right. The correct answer was: ${
               isFormulaQuestion(currentQuestion)
-                ? currentQuestion.formula
+                ? filteredform
                 : isTFQuestion(currentQuestion)
                 ? currentQuestion.answer
                 : isMCQQuestion(currentQuestion) ||
@@ -307,6 +326,7 @@ const SelectedTopicPage: React.FC = () => {
           ...currentQuestion,
           used: true,
         });
+        setFormulaSequence([]);
       } else if (isMCQQuestion(currentQuestion)) {
         await mcqQuestionApi.update(currentQuestion.id, {
           ...currentQuestion,
@@ -334,7 +354,8 @@ const SelectedTopicPage: React.FC = () => {
       setSelectedAnswers([]);
       setShowFeedback(false);
       setCompanionMessage("");
-      setFormulaSequence([]);
+    setDisabledSymbols(new Set());
+    setFormulaSequence([]);
     }
   };
 
@@ -348,6 +369,8 @@ const SelectedTopicPage: React.FC = () => {
       setSelectedAnswers([]);
       setShowFeedback(false);
       setFormulaSequence([]);
+    setDisabledSymbols(new Set());
+
     } else {
       summaryAudio.play();
       const totalQuestions = questions.length;
@@ -365,7 +388,7 @@ const SelectedTopicPage: React.FC = () => {
   };
 
   const renderFormulaInterface = (question: FormulaQuestion) => {
-    return (
+    return(
       <div className="space-y-6">
         <div className="bg-[#111111] p-6 rounded-lg">
           <div className="mb-6 p-4 bg-[#1A1A1A] rounded-lg min-h-[60px] flex items-center">
@@ -384,14 +407,21 @@ const SelectedTopicPage: React.FC = () => {
           <div className="mb-6">
             <h3 className="text-white text-sm mb-3">Available Terms</h3>
             <div className="flex flex-wrap gap-2">
-              {question.options.map((word, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleFormulaSelect("word", word)}
-                  className="px-4 py-2 rounded bg-[#1A1A1A] text-white hover:bg-[#00A3FF] transition-colors"
-                >
-                  {word}
-                </button>
+              {question.quantities.map((word, index) => (
+               <button
+               key={index}
+               disabled={disabledSymbols.has(word.name)}
+               onClick={() => {
+                 handleFormulaSelect("word", word.name);
+               }}
+               className={`px-4 py-2 rounded ${
+                 disabledSymbols.has(word.name) 
+                   ? 'hidden' 
+                   : 'bg-[#1A1A1A] hover:bg-[#00A3FF]'
+               } text-white transition-colors`}
+             >
+               {word.name}
+             </button>
               ))}
             </div>
           </div>
@@ -498,8 +528,15 @@ const SelectedTopicPage: React.FC = () => {
             renderButton(choice, currentQuestion.answer === choice)
           )}
         </div>
-      );
-    }
+      );}
+      if (isFormulaQuestion(currentQuestion)){
+        return(
+          <div className="flex flex-1 gap-2">{["p", "m","v"].map((choice) =>
+            renderButton(choice, true)
+          )}</div>
+        )
+      }
+    
 
     return null;
   };
@@ -679,7 +716,7 @@ const SelectedTopicPage: React.FC = () => {
                         <>
                           Incorrect. The correct answer was:{" "}
                           {isFormulaQuestion(currentQuestion) ? (
-                            currentQuestion.formula
+                            currentQuestion.formula.map((f)=>(currentQuestion.formula.indexOf(f)%2==0)?f.name:f.symbol).join(" ")
                           ) : isTFQuestion(currentQuestion) ? (
                             isImageUrl(currentQuestion.answer) ? (
                               <div className="flex gap-2">
