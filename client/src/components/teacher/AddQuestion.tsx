@@ -726,7 +726,7 @@ const [formula, setFormula]=useState<{
         };
         console.log("mcqData:",mcqData);
         const response = await fetch(
-          "http://127.0.0.1:8000/mcqquestion",
+          "https://lean-learn-backend-ai-do7a.onrender.com/mcqquestion",
           {
             method: "POST",
             headers: {
@@ -774,7 +774,7 @@ const [formula, setFormula]=useState<{
           used: true,
         };
         const response = await fetch(
-          "http://127.0.0.1:8000/fillquestion",
+          "https://lean-learn-backend-ai-do7a.onrender.com/fillquestion",
           {
             method: "POST",
             headers: {
@@ -800,7 +800,7 @@ const [formula, setFormula]=useState<{
         };
 
         const response = await fetch(
-          "http://127.0.0.1:8000/tfquestion",
+          "https://lean-learn-backend-ai-do7a.onrender.com/tfquestion",
           {
             method: "POST",
             headers: {
