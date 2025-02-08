@@ -23,6 +23,7 @@ const MCQQuestionComponent: React.FC<MCQQuestionProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        console.log(question.options);
         {question.options.map((option, index) => (
           <button
             key={index}
