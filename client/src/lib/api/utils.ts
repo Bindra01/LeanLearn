@@ -1,6 +1,6 @@
 import { CommonQty } from "@/types/utilsInteface";
 
-const BASE_URL = 'https://lean-learn-backend-ai-ex3e.onrender.com';
+const BASE_URL = 'https://lean-learn-backend-ai-2sdi.onrender.com';
 export const quantitiesApi = {
   getAll: async (): Promise<CommonQty[]> => {
     try {
